@@ -1,0 +1,20 @@
+{
+  "name": "facility_addresses",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "node-fetch": "^2.7.0"
+  },
+  "description": "Facility Address Generator and Upload Tool",
+  "main": "server.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
+
