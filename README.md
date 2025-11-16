@@ -1,6 +1,6 @@
 # Site Identification Developer - Web Application
 
-**Version 2.0.0** - Production Ready Release
+**Version 2.1.0** - Reset User Facility Eligibility Feature
 
 Web version of the Site Identification Developer (SID) tool, deployed on Vercel. This is a complete migration from the Python desktop application (`facilityaddress.py`) with enhanced features and improved user experience. This tool generates facility address data from city/state pairs and uploads it to Manhattan WMS.
 
@@ -115,7 +115,7 @@ facility_addresses/
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Current Version:** 2.0.0 (Major Release)
+**Current Version:** 2.1.0 (Feature Release)
 
 ## Notes
 

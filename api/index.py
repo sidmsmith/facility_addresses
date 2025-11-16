@@ -326,6 +326,96 @@ def upload():
             "error": f"Upload failed: {str(e)}"
         })
 
+@app.route('/api/reset_user_eligibility', methods=['POST'])
+def reset_user_eligibility():
+    """
+    Reset user eligibility for the demoweb user for all provided LocationIds.
+
+    Expected JSON body:
+    {
+        "org": "ss-demo",
+        "token": "<bearer token>",
+        "location_ids": ["SS-DEMO-DM1", "SS-DEMO-DM2"]
+    }
+    """
+    data = request.json
+    org = data.get('org', '').strip().lower()
+    token = data.get('token', '').strip()
+    location_ids = data.get('location_ids') or []
+
+    if not org or not token:
+        return jsonify({"success": False, "error": "ORG and token required"})
+
+    # Normalize and validate location IDs
+    cleaned_locations = [lid for lid in (location_ids or []) if isinstance(lid, str) and lid.strip()]
+    if not cleaned_locations:
+        return jsonify({"success": False, "error": "At least one LocationId is required"})
+
+    url = f"https://{API_HOST}/organization/api/organization/user/save"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "UserId": f"demoweb@{org}",
+        "Actions": {
+            "UserLocation": "RESET"
+        },
+        "UserLocation": [
+            {"LocationId": lid} for lid in cleaned_locations
+        ]
+    }
+
+    print("=" * 80)
+    print("[RESET_USER] API Call Details")
+    print("=" * 80)
+    print(f"[RESET_USER] URL: {url}")
+    print(f"[RESET_USER] Headers: Authorization: Bearer [REDACTED]")
+    print(f"[RESET_USER] Payload: {json.dumps(payload, indent=2)}")
+    print("-" * 80)
+
+    try:
+        r = requests.post(url, json=payload, headers=headers, timeout=60, verify=False)
+
+        print(f"[RESET_USER] Response Status: {r.status_code}")
+        print(f"[RESET_USER] Response: {r.text[:1000]}")
+        print("=" * 80)
+
+        if r.status_code not in (200, 201):
+            return jsonify({
+                "success": False,
+                "error": f"API {r.status_code}: {r.text[:500]}"
+            })
+
+        # Try to parse JSON, but don't fail purely on parse
+        summary = f"Reset user eligibility for {len(cleaned_locations)} location(s) for user demoweb@{org}"
+        try:
+            resp_json = r.json()
+            # If response has any obvious error messages, include them
+            errors = extract_errors(resp_json)
+            if errors:
+                summary += "\n\nMessages:\n" + "\n".join(f"• {e}" for e in errors)
+        except Exception as e:
+            print(f"[RESET_USER] JSON parse error: {e}")
+
+        send_ha_message({
+            "event": "sid_reset_user_eligibility",
+            "org": org,
+            "location_count": len(cleaned_locations)
+        })
+
+        return jsonify({
+            "success": True,
+            "summary": summary
+        })
+    except Exception as e:
+        print(f"[RESET_USER] Exception: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"Reset user eligibility failed: {str(e)}"
+        })
+
 # === FALLBACK: Serve index.html for SPA ===
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

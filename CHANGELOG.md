@@ -2,6 +2,29 @@
 
 All notable changes to the Site Identification Developer web application will be documented in this file.
 
+## [2.1.0] - 2025-01-XX
+
+### Added
+- **Reset User Facility Eligibility Feature**: Added checkbox to reset user facility eligibility after upload
+  - Checkbox positioned to the right of "Upload to WM" button with centered button layout
+  - When checked, makes additional API call to reset user eligibility for all facilities displayed
+  - Custom large tooltip explaining the feature functionality
+  - Checkbox state persisted in localStorage
+  - Defaults to unchecked on first load
+
+### Changed
+- **Button Layout**: Restructured button layout using CSS Grid to keep buttons centered with checkbox to the right
+- **Checkbox Text**: Updated to "Reset User Facility Eligibility?" with smaller font size for better fit
+- **Tooltip**: Custom large tooltip (400px wide) with dark theme styling, appears on hover
+
+### Technical Details
+- New API endpoint: `/api/reset_user_eligibility` 
+- Calls Manhattan API: `/organization/api/organization/user/save`
+- UserId format: `demoweb@{org}` (lowercase)
+- LocationIds extracted from displayed FacilityIds in JSON
+
+---
+
 ## [2.0.0] - 2025-01-XX
 
 ### Major Release - Production Ready
