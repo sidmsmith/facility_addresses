@@ -562,12 +562,17 @@
         status('Preview Mode - UI visible (no API calls)', 'info');
         orgInput.value = 'SS-DEMO';
       } else {
-        api('app_opened', {}).catch(() => {
+        api('app_opened', { org: urlOrg || '' }).catch(() => {
           // Silently fail if API not available
         });
       }
       
-      orgInput.focus();
+      // Auto-authenticate if Organization parameter is provided in URL
+      if (urlOrg && !previewMode) {
+        authenticate();
+      } else if (!previewMode) {
+        orgInput.focus();
+      }
       initJsonEditor();
     });
 
