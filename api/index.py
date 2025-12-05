@@ -448,6 +448,9 @@ def serve_statsig_js():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_static(path):
+    # Don't serve index.html for JavaScript files that don't exist - return 404 instead
+    if path.endswith('.js') and path not in ['statsig.js', 'statsig-js-client.min.js']:
+        return jsonify({'error': 'File not found'}), 404
     return send_from_directory(os.path.dirname(os.path.dirname(__file__)), 'index.html')
 
 if __name__ == '__main__':
