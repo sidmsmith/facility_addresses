@@ -365,6 +365,15 @@
       
       const org = orgInput.value.trim();
       if (!org) return status('ORG required', 'error');
+      
+      // Track generate attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('generate_addresses_attempt', {
+          org: org,
+          facilities_length: String(facilities.length),
+          timestamp: new Date().toISOString()
+        });
+      }
 
       // Validate and parse facilities - handle both semicolon and comma separators
       // First split by semicolon to get pairs, then split each pair by comma
@@ -456,6 +465,18 @@
           if (!geoRes.success) {
             status(`Error geocoding ${city}, ${state}: ${geoRes.error}`, 'error');
             generateBtn.disabled = false;
+            
+            // Track generate failure in Statsig
+            if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+              window.StatsigTracking.logEvent('generate_addresses_failed', {
+                org: org,
+                city: city,
+                state: state,
+                error: geoRes.error || 'Geocoding failed',
+                timestamp: new Date().toISOString()
+              });
+            }
+            
             return;
           }
 
@@ -502,9 +523,27 @@
         progressBar.style.width = '100%';
         progressLabel.textContent = `Generated ${total_pairs} facility addresses`;
         status(`Generated ${total_pairs} facility addresses!`, 'success');
+        
+        // Track generate success in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('generate_addresses_completed', {
+            org: org,
+            facilities_count: String(total_pairs),
+            timestamp: new Date().toISOString()
+          });
+        }
       } catch (e) {
         status(`Error: ${e.message}`, 'error');
         progressLabel.textContent = 'Generation failed';
+        
+        // Track generate failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('generate_addresses_failed', {
+            org: org,
+            error: e.message || 'Generation failed',
+            timestamp: new Date().toISOString()
+          });
+        }
       } finally {
         generateBtn.disabled = false;
       }
@@ -592,6 +631,15 @@
 
       const org = orgInput.value.trim();
       if (!org) return status('ORG required', 'error');
+      
+      // Track upload attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('upload_addresses_attempt', {
+          org: org,
+          json_length: String(jsonStr.length),
+          timestamp: new Date().toISOString()
+        });
+      }
 
       status('Uploading...', 'info');
       uploadBtn.disabled = true;
@@ -606,6 +654,16 @@
         if (!res.success) {
           status(res.error || 'Upload failed', 'error');
           progressLabel.textContent = 'Upload Failed';
+          
+          // Track upload failure in Statsig
+          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+            window.StatsigTracking.logEvent('upload_addresses_failed', {
+              org: org,
+              error: res.error || 'Upload failed',
+              timestamp: new Date().toISOString()
+            });
+          }
+          
           return;
         }
 
@@ -662,11 +720,31 @@
         progressLabel.textContent = finalProgressLabel;
         status(finalStatusMessage, 'success');
         
+        // Track upload success in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('upload_addresses_completed', {
+            org: org,
+            total: String(res.total || 0),
+            success: String(res.success || 0),
+            failed: String(res.failed || 0),
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         // Show summary in alert
         alert(alertMessage);
       } catch (e) {
         status(`Error: ${e.message}`, 'error');
         progressLabel.textContent = 'Upload Failed';
+        
+        // Track upload failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('upload_addresses_failed', {
+            org: org,
+            error: e.message || 'Upload failed',
+            timestamp: new Date().toISOString()
+          });
+        }
       } finally {
         uploadBtn.disabled = false;
       }
