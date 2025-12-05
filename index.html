@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Site Identification Developer v2.1.0</title>
+  <title>Update Facility Addresses v2.2.0</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <!-- CodeMirror for JSON syntax highlighting -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
@@ -25,6 +26,36 @@
       --success: #28a745;
       --primary: #0d6efd;
     }
+    
+    /* Dark theme (existing theme) */
+    :root.theme-dark {
+      --bg-dark: #121212;
+      --card-bg: #1e1e1e;
+      --input-bg: #2d2d2d;
+      --border: #333;
+      --text: #e0e0e0;
+      --red-bg: #4a1a1a;
+      --red-text: #ff6b6b;
+      --blue-select: #339af0;
+      --success: #28a745;
+      --primary: #0d6efd;
+    }
+    
+    /* Manhattan theme */
+    :root.theme-manhattan {
+      --bg-dark: rgb(45, 47, 59);
+      --card-bg: #484e5e;
+      --input-bg: #282c34;
+      --border: #333;
+      --text: #495057;
+      --red-bg: #4a1a1a;
+      --red-text: #ff6b6b;
+      --blue-select: #339af0;
+      --success: hsl(142.1 76.2% 36.3%);
+      --primary: #3B82F6;
+      --secondary: #6c757d;
+      --shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
 
     body { 
       background: var(--bg-dark); 
@@ -43,6 +74,7 @@
       margin: 1rem;
       display: flex;
       flex-direction: column;
+      position: relative;
     }
 
     @media (min-width: 769px) {
@@ -85,6 +117,134 @@
     .form-label { color: #bbbbbb; font-weight: 600; }
     small { color: #999; }
     h2 { color: var(--primary); }
+    
+    /* Theme selector gear icon */
+    .theme-selector-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: #e0e0e0;
+      padding: 0.5rem;
+      cursor: pointer;
+      font-size: 1.5rem;
+      z-index: 1000;
+      transition: transform 0.2s;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    
+    .theme-selector-btn:hover {
+      transform: rotate(90deg);
+    }
+    
+    /* Ensure gear icon is visible in all themes with proper contrast */
+    :root.theme-manhattan .theme-selector-btn {
+      color: #e0e0e0;
+    }
+    
+    /* Manhattan theme: all buttons use the same blue color */
+    :root.theme-manhattan .btn-primary,
+    :root.theme-manhattan .btn-success {
+      background: #3B82F6;
+    }
+    
+    :root.theme-manhattan .btn-primary:hover,
+    :root.theme-manhattan .btn-success:hover {
+      background: #2563eb;
+    }
+    
+    /* Modal styling */
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    
+    .modal-header {
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .modal-title {
+      color: var(--text);
+    }
+    
+    .list-group-item {
+      background: var(--input-bg);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    
+    .list-group-item:hover {
+      background: #333;
+    }
+    
+    .list-group-item.active {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    /* Checkbox styling for dark theme */
+    .form-check-label {
+      color: var(--text);
+      cursor: pointer;
+    }
+    .form-check-input {
+      background-color: var(--input-bg);
+      border-color: #444;
+      cursor: pointer;
+    }
+    .form-check-input:checked {
+      background-color: var(--primary);
+      border-color: var(--primary);
+    }
+    .form-check-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+
+    /* Custom Tooltip */
+    .custom-tooltip-container {
+      position: relative;
+      display: inline-block;
+    }
+    .custom-tooltip {
+      visibility: hidden;
+      opacity: 0;
+      background-color: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      position: absolute;
+      z-index: 1000;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      max-width: 90vw;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      transition: opacity 0.2s, visibility 0.2s;
+      pointer-events: none;
+    }
+    .custom-tooltip::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 8px;
+      border-style: solid;
+      border-color: var(--card-bg) transparent transparent transparent;
+    }
+    .custom-tooltip-container:hover .custom-tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
 
     /* HIDDEN UNTIL AUTH */
     #mainUI { display: none; }
@@ -130,10 +290,13 @@
 </head>
 <body>
   <div class="main-card">
-    <h2 class="text-center mb-4">Site Identification Developer v2.0.0</h2>
+    <button class="theme-selector-btn" id="themeSelectorBtn" title="Select Theme">
+      <i class="fas fa-cog"></i>
+    </button>
+    <h2 class="text-center mb-4">Update Facility Addresses v2.2.0</h2>
 
     <!-- ORG -->
-    <div class="mb-3">
+    <div id="authSection" class="mb-3">
       <label class="form-label">ORG:</label>
       <div class="d-flex align-items-center gap-2">
         <input type="text" id="org" class="form-control" placeholder="Enter ORG" maxlength="20" style="width: 250px; max-width: 100%;" />
@@ -185,12 +348,33 @@
       </div>
 
       <!-- BUTTONS -->
-      <div class="d-flex gap-3 justify-content-center align-items-center mt-4 flex-wrap">
-        <button id="generateBtn" class="btn btn-success px-4" style="min-width: 200px;">Generate JSON</button>
-        <button id="uploadBtn" class="btn btn-primary px-4" style="min-width: 200px;">2. Upload to WM</button>
-        <div class="form-check ms-2">
+      <div class="mt-4" style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 1rem;">
+        <div></div>
+        <div class="d-flex gap-3 align-items-center">
+          <button id="generateBtn" class="btn btn-success px-4" style="min-width: 200px;">Generate JSON</button>
+          <button id="uploadBtn" class="btn btn-primary px-4" style="min-width: 200px;">2. Upload to WM</button>
+        </div>
+        <div class="form-check d-flex justify-content-start custom-tooltip-container">
           <input class="form-check-input" type="checkbox" id="resetEligibilityCheckbox" />
-          <label class="form-check-label" for="resetEligibilityCheckbox">Reset User Eligibility?</label>
+          <label class="form-check-label" for="resetEligibilityCheckbox" style="font-size: 0.875rem; white-space: nowrap;">Reset User Facility Eligibility?</label>
+          <div class="custom-tooltip">
+            This checkbox updates the Manage User Facilities for each facility listed above. For example, if this window lists 3 facilities, this checkbox will update the user to only allow these same 3 facilities.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- THEME SELECTOR MODAL -->
+  <div class="modal fade" id="themeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Select Theme</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="list-group" id="themeList"></div>
         </div>
       </div>
     </div>
@@ -235,15 +419,36 @@
     const DEFAULT_FACILITIES = "Atlanta, GA;Jonestown, PA;Toronto, ON;Sydney, NSW";
     const DEFAULT_FILENAME = "FacilityAddresses.json";
 
-    // Ensure ORG is always blank on load (security)
-    orgInput.value = '';
+    // URL Parameters for cross-app integration
+    const urlParams = new URLSearchParams(window.location.search);
+    const locationParam = urlParams.get('Location');
+    const organizationParam = urlParams.get('Organization');
+    const businessUnitParam = urlParams.get('BusinessUnit');
+    
+    // Store URL parameters for use
+    const urlLocation = locationParam || null;
+    const urlOrg = organizationParam || null;
+    const urlBusinessUnit = businessUnitParam || null;
+    
+    // Ensure ORG is blank on load (security) unless from URL
+    if (urlOrg) {
+      orgInput.value = urlOrg.trim();
+      // Hide auth section when auto-authenticating
+      const authSection = document.getElementById('authSection');
+      if (authSection) {
+        authSection.style.display = 'none';
+      }
+    } else {
+      orgInput.value = '';
+    }
 
     // ===== LOCALSTORAGE PERSISTENCE =====
     const STORAGE_KEY = 'facility_addresses_preferences';
     
     function savePreferences() {
       const prefs = {
-        facilities: facilitiesTextarea.value
+        facilities: facilitiesTextarea.value,
+        resetEligibilityChecked: resetEligibilityCheckbox.checked
       };
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
@@ -262,14 +467,22 @@
           } else {
             facilitiesTextarea.value = DEFAULT_FACILITIES;
           }
+          // Load checkbox state (default to false if not set)
+          if (prefs.resetEligibilityChecked !== undefined) {
+            resetEligibilityCheckbox.checked = prefs.resetEligibilityChecked;
+          } else {
+            resetEligibilityCheckbox.checked = false;
+          }
         } else {
           // First time - use defaults
           facilitiesTextarea.value = DEFAULT_FACILITIES;
+          resetEligibilityCheckbox.checked = false;
         }
       } catch (e) {
         console.warn('Failed to load preferences:', e);
         // Use defaults on error
         facilitiesTextarea.value = DEFAULT_FACILITIES;
+        resetEligibilityCheckbox.checked = false;
       }
     }
     
@@ -277,6 +490,7 @@
       try {
         localStorage.removeItem(STORAGE_KEY);
         facilitiesTextarea.value = DEFAULT_FACILITIES;
+        resetEligibilityCheckbox.checked = false;
         if (jsonEditor) {
           jsonEditor.setValue('');
         } else {
@@ -306,6 +520,11 @@
       }
     });
 
+    // Save checkbox state when it changes
+    resetEligibilityCheckbox.addEventListener('change', () => {
+      savePreferences();
+    });
+
     // STATUS
     function status(text, type = 'info') {
       statusEl.textContent = text;
@@ -314,6 +533,12 @@
 
     // API
     async function api(action, data = {}) {
+      // If in preview mode, return mock success responses
+      if (token === 'preview-token') {
+        console.log(`[Preview] Mock API call: ${action}`, data);
+        return Promise.resolve({ success: true, message: 'Preview mode - no actual API call' });
+      }
+      
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers.Authorization = `Bearer ${token}`;
       return fetch(`/api/${action}`, {
@@ -325,7 +550,23 @@
 
     // App opened
     window.addEventListener('load', () => {
-      api('app_opened', {});
+      // Check for preview mode (for local testing without backend)
+      const urlParams = new URLSearchParams(window.location.search);
+      const previewMode = urlParams.get('preview') === 'true';
+      
+      if (previewMode) {
+        // Simulate authentication for preview
+        token = 'preview-token';
+        mainUI.style.display = 'block';
+        uploadFileContainer.style.display = 'block';
+        status('Preview Mode - UI visible (no API calls)', 'info');
+        orgInput.value = 'SS-DEMO';
+      } else {
+        api('app_opened', {}).catch(() => {
+          // Silently fail if API not available
+        });
+      }
+      
       orgInput.focus();
       initJsonEditor();
     });
@@ -336,47 +577,50 @@
       if (!org) {
         status('ORG required', 'error');
         mainUI.style.display = 'none';
-        
-        // Track auth failure in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('auth_failed', {
-            error: 'ORG required',
-            timestamp: new Date().toISOString()
-          });
-        }
-        
         return;
       }
       
       // Track auth attempt in Statsig
       if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
         window.StatsigTracking.logEvent('auth_attempt', {
-          org: org,
+          org: org || 'unknown',
           timestamp: new Date().toISOString()
         });
       }
       
       status('Authenticating...');
+      
+      // Check for preview mode
+      const urlParams = new URLSearchParams(window.location.search);
+      const previewMode = urlParams.get('preview') === 'true';
+      
+      if (previewMode) {
+        // Simulate successful auth for preview
+        token = 'preview-token';
+        status('Preview Mode - Authenticated (no API call)', 'success');
+        mainUI.style.display = 'block';
+        uploadFileContainer.style.display = 'block';
+        return;
+      }
+      
       const res = await api('auth', { org });
       if (!res.success) {
-        status(res.error || 'Auth failed', 'error');
-        mainUI.style.display = 'none';
-        
         // Track auth failure in Statsig
         if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
           window.StatsigTracking.logEvent('auth_failed', {
-            org: org,
+            org: org || 'unknown',
             error: res.error || 'Auth failed',
             timestamp: new Date().toISOString()
           });
         }
         
+        status(res.error || 'Auth failed', 'error');
+        mainUI.style.display = 'none';
         return;
       }
+      
       token = res.token;
       status('Authenticated – ready!', 'success');
-      mainUI.style.display = 'block';
-      uploadFileContainer.style.display = 'block';
       
       // Track auth success in Statsig
       if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
@@ -385,6 +629,9 @@
           timestamp: new Date().toISOString()
         });
       }
+      
+      mainUI.style.display = 'block';
+      uploadFileContainer.style.display = 'block';
     }
 
     orgInput.addEventListener('keypress', e => {
@@ -405,8 +652,8 @@
       // Track generate attempt in Statsig
       if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
         window.StatsigTracking.logEvent('generate_addresses_attempt', {
-          org: org,
-          facilities_length: String(facilities.length),
+          org: org || 'unknown',
+          facilities_input_length: String(facilities.length),
           timestamp: new Date().toISOString()
         });
       }
@@ -501,18 +748,6 @@
           if (!geoRes.success) {
             status(`Error geocoding ${city}, ${state}: ${geoRes.error}`, 'error');
             generateBtn.disabled = false;
-            
-            // Track generate failure in Statsig
-            if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-              window.StatsigTracking.logEvent('generate_addresses_failed', {
-                org: org,
-                city: city,
-                state: state,
-                error: geoRes.error || 'Geocoding failed',
-                timestamp: new Date().toISOString()
-              });
-            }
-            
             return;
           }
 
@@ -559,27 +794,9 @@
         progressBar.style.width = '100%';
         progressLabel.textContent = `Generated ${total_pairs} facility addresses`;
         status(`Generated ${total_pairs} facility addresses!`, 'success');
-        
-        // Track generate success in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('generate_addresses_completed', {
-            org: org,
-            facilities_count: String(total_pairs),
-            timestamp: new Date().toISOString()
-          });
-        }
       } catch (e) {
         status(`Error: ${e.message}`, 'error');
         progressLabel.textContent = 'Generation failed';
-        
-        // Track generate failure in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('generate_addresses_failed', {
-            org: org,
-            error: e.message || 'Generation failed',
-            timestamp: new Date().toISOString()
-          });
-        }
       } finally {
         generateBtn.disabled = false;
       }
@@ -591,6 +808,15 @@
       if (!jsonStr) {
         status('No JSON to download', 'error');
         return;
+      }
+
+      // Track download attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('download_json_attempt', {
+          org: orgInput.value.trim() || 'unknown',
+          json_length: String(jsonStr.length),
+          timestamp: new Date().toISOString()
+        });
       }
 
       try {
@@ -608,8 +834,27 @@
         URL.revokeObjectURL(url);
         
         status('File downloaded!', 'success');
+        
+        // Track download success in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('download_json_completed', {
+            org: orgInput.value.trim() || 'unknown',
+            json_length: String(jsonStr.length),
+            filename: DEFAULT_FILENAME,
+            timestamp: new Date().toISOString()
+          });
+        }
       } catch (e) {
         status('Invalid JSON - cannot download', 'error');
+        
+        // Track download failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('download_json_failed', {
+            org: orgInput.value.trim() || 'unknown',
+            error: e.message || 'Unknown error',
+            timestamp: new Date().toISOString()
+          });
+        }
       }
     };
 
@@ -618,6 +863,16 @@
       const file = e.target.files[0];
       if (!file) {
         return;
+      }
+
+      // Track load JSON file attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('load_json_file_attempt', {
+          org: orgInput.value.trim() || 'unknown',
+          file_name: file.name,
+          file_size: String(file.size),
+          timestamp: new Date().toISOString()
+        });
       }
 
       const reader = new FileReader();
@@ -634,14 +889,44 @@
           }
           downloadBtn.style.display = 'inline-block';
           status('File loaded into editor', 'success');
+          
+          // Track load JSON file success in Statsig
+          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+            window.StatsigTracking.logEvent('load_json_file_completed', {
+              org: orgInput.value.trim() || 'unknown',
+              file_name: file.name,
+              json_length: String(jsonStr.length),
+              timestamp: new Date().toISOString()
+            });
+          }
         } catch (e) {
           status('Invalid JSON file: ' + e.message, 'error');
           uploadFileInput.value = ''; // Clear the invalid file selection
+          
+          // Track load JSON file failure in Statsig
+          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+            window.StatsigTracking.logEvent('load_json_file_failed', {
+              org: orgInput.value.trim() || 'unknown',
+              file_name: file.name,
+              error: e.message || 'Unknown error',
+              timestamp: new Date().toISOString()
+            });
+          }
         }
       };
       reader.onerror = () => {
         status('Error reading file', 'error');
         uploadFileInput.value = '';
+        
+        // Track load JSON file failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('load_json_file_failed', {
+            org: orgInput.value.trim() || 'unknown',
+            file_name: file.name,
+            error: 'Error reading file',
+            timestamp: new Date().toISOString()
+          });
+        }
       };
       reader.readAsText(file);
     });
@@ -667,12 +952,13 @@
 
       const org = orgInput.value.trim();
       if (!org) return status('ORG required', 'error');
-      
+
       // Track upload attempt in Statsig
       if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
         window.StatsigTracking.logEvent('upload_addresses_attempt', {
-          org: org,
+          org: org || 'unknown',
           json_length: String(jsonStr.length),
+          reset_eligibility_checked: String(resetEligibilityCheckbox?.checked || false),
           timestamp: new Date().toISOString()
         });
       }
@@ -694,7 +980,7 @@
           // Track upload failure in Statsig
           if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
             window.StatsigTracking.logEvent('upload_addresses_failed', {
-              org: org,
+              org: org || 'unknown',
               error: res.error || 'Upload failed',
               timestamp: new Date().toISOString()
             });
@@ -759,10 +1045,10 @@
         // Track upload success in Statsig
         if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
           window.StatsigTracking.logEvent('upload_addresses_completed', {
-            org: org,
-            total: String(res.total || 0),
-            success: String(res.success || 0),
-            failed: String(res.failed || 0),
+            org: org || 'unknown',
+            total: String(res.total),
+            success_count: String(res.success),
+            failed_count: String(res.failed),
             timestamp: new Date().toISOString()
           });
         }
@@ -776,8 +1062,8 @@
         // Track upload failure in Statsig
         if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
           window.StatsigTracking.logEvent('upload_addresses_failed', {
-            org: org,
-            error: e.message || 'Upload failed',
+            org: org || 'unknown',
+            error: e.message || 'Unknown error',
             timestamp: new Date().toISOString()
           });
         }
