@@ -579,6 +579,15 @@
         mainUI.style.display = 'none';
         return;
       }
+      
+      // Track auth attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('auth_attempt', {
+          org: org || 'unknown',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       status('Authenticating...');
       
       // Check for preview mode
@@ -596,12 +605,31 @@
       
       const res = await api('auth', { org });
       if (!res.success) {
+        // Track auth failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('auth_failed', {
+            org: org || 'unknown',
+            error: res.error || 'Auth failed',
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         status(res.error || 'Auth failed', 'error');
         mainUI.style.display = 'none';
         return;
       }
+      
       token = res.token;
       status('Authenticated – ready!', 'success');
+      
+      // Track auth success in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('auth_success', {
+          org: org,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       mainUI.style.display = 'block';
       uploadFileContainer.style.display = 'block';
     }
@@ -620,6 +648,15 @@
       
       const org = orgInput.value.trim();
       if (!org) return status('ORG required', 'error');
+      
+      // Track generate attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('generate_addresses_attempt', {
+          org: org || 'unknown',
+          facilities_input_length: String(facilities.length),
+          timestamp: new Date().toISOString()
+        });
+      }
 
       // Validate and parse facilities - handle both semicolon and comma separators
       // First split by semicolon to get pairs, then split each pair by comma
@@ -773,6 +810,15 @@
         return;
       }
 
+      // Track download attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('download_json_attempt', {
+          org: orgInput.value.trim() || 'unknown',
+          json_length: String(jsonStr.length),
+          timestamp: new Date().toISOString()
+        });
+      }
+
       try {
         // Validate JSON
         JSON.parse(jsonStr);
@@ -788,8 +834,27 @@
         URL.revokeObjectURL(url);
         
         status('File downloaded!', 'success');
+        
+        // Track download success in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('download_json_completed', {
+            org: orgInput.value.trim() || 'unknown',
+            json_length: String(jsonStr.length),
+            filename: DEFAULT_FILENAME,
+            timestamp: new Date().toISOString()
+          });
+        }
       } catch (e) {
         status('Invalid JSON - cannot download', 'error');
+        
+        // Track download failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('download_json_failed', {
+            org: orgInput.value.trim() || 'unknown',
+            error: e.message || 'Unknown error',
+            timestamp: new Date().toISOString()
+          });
+        }
       }
     };
 
@@ -798,6 +863,16 @@
       const file = e.target.files[0];
       if (!file) {
         return;
+      }
+
+      // Track load JSON file attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('load_json_file_attempt', {
+          org: orgInput.value.trim() || 'unknown',
+          file_name: file.name,
+          file_size: String(file.size),
+          timestamp: new Date().toISOString()
+        });
       }
 
       const reader = new FileReader();
@@ -814,14 +889,44 @@
           }
           downloadBtn.style.display = 'inline-block';
           status('File loaded into editor', 'success');
+          
+          // Track load JSON file success in Statsig
+          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+            window.StatsigTracking.logEvent('load_json_file_completed', {
+              org: orgInput.value.trim() || 'unknown',
+              file_name: file.name,
+              json_length: String(jsonStr.length),
+              timestamp: new Date().toISOString()
+            });
+          }
         } catch (e) {
           status('Invalid JSON file: ' + e.message, 'error');
           uploadFileInput.value = ''; // Clear the invalid file selection
+          
+          // Track load JSON file failure in Statsig
+          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+            window.StatsigTracking.logEvent('load_json_file_failed', {
+              org: orgInput.value.trim() || 'unknown',
+              file_name: file.name,
+              error: e.message || 'Unknown error',
+              timestamp: new Date().toISOString()
+            });
+          }
         }
       };
       reader.onerror = () => {
         status('Error reading file', 'error');
         uploadFileInput.value = '';
+        
+        // Track load JSON file failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('load_json_file_failed', {
+            org: orgInput.value.trim() || 'unknown',
+            file_name: file.name,
+            error: 'Error reading file',
+            timestamp: new Date().toISOString()
+          });
+        }
       };
       reader.readAsText(file);
     });
@@ -848,6 +953,16 @@
       const org = orgInput.value.trim();
       if (!org) return status('ORG required', 'error');
 
+      // Track upload attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('upload_addresses_attempt', {
+          org: org || 'unknown',
+          json_length: String(jsonStr.length),
+          reset_eligibility_checked: String(resetEligibilityCheckbox?.checked || false),
+          timestamp: new Date().toISOString()
+        });
+      }
+
       status('Uploading...', 'info');
       uploadBtn.disabled = true;
       progressBar.style.width = '0%';
@@ -861,6 +976,16 @@
         if (!res.success) {
           status(res.error || 'Upload failed', 'error');
           progressLabel.textContent = 'Upload Failed';
+          
+          // Track upload failure in Statsig
+          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+            window.StatsigTracking.logEvent('upload_addresses_failed', {
+              org: org || 'unknown',
+              error: res.error || 'Upload failed',
+              timestamp: new Date().toISOString()
+            });
+          }
+          
           return;
         }
 
@@ -917,15 +1042,49 @@
         progressLabel.textContent = finalProgressLabel;
         status(finalStatusMessage, 'success');
         
+        // Track upload success in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('upload_addresses_completed', {
+            org: org || 'unknown',
+            total: String(res.total),
+            success_count: String(res.success),
+            failed_count: String(res.failed),
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         // Show summary in alert
         alert(alertMessage);
       } catch (e) {
         status(`Error: ${e.message}`, 'error');
         progressLabel.textContent = 'Upload Failed';
+        
+        // Track upload failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('upload_addresses_failed', {
+            org: org || 'unknown',
+            error: e.message || 'Unknown error',
+            timestamp: new Date().toISOString()
+          });
+        }
       } finally {
         uploadBtn.disabled = false;
       }
     };
+  </script>
+  <!-- Statsig Analytics -->
+  <script src="statsig.js"></script>
+  <!-- Vercel Analytics -->
+  <script>
+    (function() {
+      const script = document.createElement('script');
+      script.src = '/_vercel/insights/script.js';
+      script.defer = true;
+      script.onerror = function() {
+        console.warn('Vercel Analytics script failed to load. Make sure Analytics is enabled in Vercel dashboard and the app is redeployed.');
+      };
+      document.head.appendChild(script);
+    })();
   </script>
 </body>
 </html>
