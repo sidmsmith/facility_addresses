@@ -336,19 +336,55 @@
       if (!org) {
         status('ORG required', 'error');
         mainUI.style.display = 'none';
+        
+        // Track auth failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('auth_failed', {
+            error: 'ORG required',
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         return;
       }
+      
+      // Track auth attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('auth_attempt', {
+          org: org,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       status('Authenticating...');
       const res = await api('auth', { org });
       if (!res.success) {
         status(res.error || 'Auth failed', 'error');
         mainUI.style.display = 'none';
+        
+        // Track auth failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('auth_failed', {
+            org: org,
+            error: res.error || 'Auth failed',
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         return;
       }
       token = res.token;
       status('Authenticated – ready!', 'success');
       mainUI.style.display = 'block';
       uploadFileContainer.style.display = 'block';
+      
+      // Track auth success in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('auth_success', {
+          org: org,
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
     orgInput.addEventListener('keypress', e => {
