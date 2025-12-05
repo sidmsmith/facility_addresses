@@ -12,9 +12,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = Flask(__name__)
 
 # === SECURE CONFIG (from Vercel Environment Variables) ===
-HA_WEBHOOK_URL = "http://sidmsmith.zapto.org:8123/api/webhook/manhattan_facilityaddress"
-HA_HEADERS = {"Content-Type": "application/json"}
-
 AUTH_HOST = "salep-auth.sce.manh.com"
 API_HOST = "salep.sce.manh.com"
 USERNAME_BASE = "sdtadmin@"
@@ -27,12 +24,6 @@ if not PASSWORD or not CLIENT_SECRET:
     raise Exception("Missing MANHATTAN_PASSWORD or MANHATTAN_SECRET environment variables")
 
 # === HELPERS ===
-def send_ha_message(payload):
-    try:
-        requests.post(HA_WEBHOOK_URL, json=payload, headers=HA_HEADERS, timeout=5)
-    except:
-        pass
-
 def get_manhattan_token(org):
     url = f"https://{AUTH_HOST}/oauth/token"
     username = f"{USERNAME_BASE}{org.lower()}"
@@ -159,7 +150,6 @@ def extract_errors(data):
 # === API ROUTES ===
 @app.route('/api/app_opened', methods=['POST'])
 def app_opened():
-    send_ha_message({"event": "sid_open"})
     return jsonify({"success": True})
 
 @app.route('/api/auth', methods=['POST'])
@@ -169,9 +159,7 @@ def auth():
         return jsonify({"success": False, "error": "ORG required"})
     token = get_manhattan_token(org)
     if token:
-        send_ha_message({"event": "sid_auth", "org": org, "success": True})
         return jsonify({"success": True, "token": token})
-    send_ha_message({"event": "sid_auth", "org": org, "success": False})
     return jsonify({"success": False, "error": "Auth failed"})
 
 @app.route('/api/geocode', methods=['POST'])
@@ -207,8 +195,6 @@ def generate():
     
     results = []
     total_pairs = len(facilities_list) // 2
-    
-    send_ha_message({"event": "sid_generate", "org": org, "count": total_pairs})
     
     # Geocode each pair
     for i in range(0, len(facilities_list), 2):
@@ -303,14 +289,6 @@ def upload():
         if errors:
             summary += "\n\nErrors:\n" + "\n".join(f"• {e}" for e in errors)
         
-        send_ha_message({
-            "event": "sid_upload",
-            "org": org,
-            "total": total,
-            "success": success,
-            "failed": failed
-        })
-        
         return jsonify({
             "success": True,
             "summary": summary,
@@ -398,12 +376,6 @@ def reset_user_eligibility():
                 summary += "\n\nMessages:\n" + "\n".join(f"• {e}" for e in errors)
         except Exception as e:
             print(f"[RESET_USER] JSON parse error: {e}")
-
-        send_ha_message({
-            "event": "sid_reset_user_eligibility",
-            "org": org,
-            "location_count": len(cleaned_locations)
-        })
 
         return jsonify({
             "success": True,
