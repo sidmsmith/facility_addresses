@@ -548,11 +548,209 @@
       }).then(r => r.json());
     }
 
+    // ===== SESSION TRACKING =====
+    const SESSION_STORAGE_KEY = 'facility_addresses_session';
+    let sessionId = null;
+    let pageLoadTime = null;
+    let authAttemptCount = 0;
+    let firstAuthSuccess = true;
+
+    // Initialize session on page load
+    (function initSession() {
+      pageLoadTime = Date.now();
+      
+      // Get or create session ID
+      sessionId = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      if (!sessionId) {
+        sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+        sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+      }
+      
+      // Check if returning user
+      const hasSavedPreferences = localStorage.getItem('facility_addresses_facilities') !== null;
+      
+      // Store for metadata collection
+      window._appSession = {
+        sessionId,
+        pageLoadTime,
+        hasSavedPreferences
+      };
+    })();
+
+    // ===== GENERIC METADATA COLLECTION (Reusable across all apps) =====
+    function getCommonMetadata(additionalMetadata = {}) {
+      const now = Date.now();
+      const timeOnPage = pageLoadTime ? Math.floor((now - pageLoadTime) / 1000) : 0;
+      
+      // Parse user agent
+      const ua = navigator.userAgent;
+      const browserInfo = parseUserAgent(ua);
+      
+      // Get screen info
+      const screenWidth = window.screen.width;
+      const screenHeight = window.screen.height;
+      const screenResolution = `${screenWidth}x${screenHeight}`;
+      
+      // Get URL parameters
+      const urlParamsObj = {};
+      const currentUrlParams = new URLSearchParams(window.location.search);
+      for (const [key, value] of currentUrlParams.entries()) {
+        urlParamsObj[key] = value;
+      }
+      
+      // Get theme
+      const currentTheme = localStorage.getItem('facility_addresses_theme') || 'dark';
+      
+      // Check for preview mode
+      const previewMode = urlParamsObj.preview === 'true';
+      
+      // Build common metadata
+      const commonMetadata = {
+        // Category 1: User/Browser Information
+        user_agent: ua,
+        browser_name: browserInfo.name,
+        browser_version: browserInfo.version,
+        device_type: getDeviceType(),
+        os_name: browserInfo.os,
+        os_version: browserInfo.osVersion,
+        screen_resolution: screenResolution,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: navigator.language || navigator.userLanguage,
+        
+        // Category 2: Session & Context
+        session_id: sessionId,
+        page_load_time: pageLoadTime ? new Date(pageLoadTime).toISOString() : null,
+        time_on_page: timeOnPage,
+        referrer: document.referrer || null,
+        url_params: Object.keys(urlParamsObj).length > 0 ? urlParamsObj : null,
+        auto_authenticated: false, // This app doesn't use URL params for auto-auth
+        preview_mode: previewMode,
+        
+        // Category 3: App State & Preferences
+        theme: currentTheme,
+        has_saved_preferences: window._appSession?.hasSavedPreferences || false,
+        
+        // Category 4: Authentication Context (will be overridden by event-specific data)
+        auth_method: 'manual',
+        auth_attempt_count: authAttemptCount,
+        first_auth_success: firstAuthSuccess,
+        
+        // Category 7: Error & Debugging (will be populated if error occurs)
+        // error_code, error_message, stack_trace, api_error_details - added per event
+        
+        // Category 8: Cross-App Integration
+        source_app: null,
+        integration_type: 'direct',
+        
+        // Category 10: Geographic/Network
+        request_origin: window.location.origin,
+        
+        // Merge any additional metadata
+        ...additionalMetadata
+      };
+      
+      return commonMetadata;
+    }
+
+    // Helper: Parse user agent
+    function parseUserAgent(ua) {
+      let name = 'Unknown';
+      let version = 'Unknown';
+      let os = 'Unknown';
+      let osVersion = 'Unknown';
+      
+      // Browser detection
+      if (ua.includes('Chrome') && !ua.includes('Edg')) {
+        name = 'Chrome';
+        const match = ua.match(/Chrome\/([\d.]+)/);
+        version = match ? match[1] : 'Unknown';
+      } else if (ua.includes('Firefox')) {
+        name = 'Firefox';
+        const match = ua.match(/Firefox\/([\d.]+)/);
+        version = match ? match[1] : 'Unknown';
+      } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+        name = 'Safari';
+        const match = ua.match(/Version\/([\d.]+)/);
+        version = match ? match[1] : 'Unknown';
+      } else if (ua.includes('Edg')) {
+        name = 'Edge';
+        const match = ua.match(/Edg\/([\d.]+)/);
+        version = match ? match[1] : 'Unknown';
+      }
+      
+      // OS detection
+      if (ua.includes('Windows')) {
+        os = 'Windows';
+        const match = ua.match(/Windows NT ([\d.]+)/);
+        if (match) {
+          const ntVersion = match[1];
+          const versionMap = {
+            '10.0': '10/11',
+            '6.3': '8.1',
+            '6.2': '8',
+            '6.1': '7'
+          };
+          osVersion = versionMap[ntVersion] || ntVersion;
+        }
+      } else if (ua.includes('Mac OS X') || ua.includes('Macintosh')) {
+        os = 'macOS';
+        const match = ua.match(/Mac OS X ([\d_]+)/);
+        if (match) {
+          osVersion = match[1].replace(/_/g, '.');
+        }
+      } else if (ua.includes('Linux')) {
+        os = 'Linux';
+      } else if (ua.includes('Android')) {
+        os = 'Android';
+        const match = ua.match(/Android ([\d.]+)/);
+        osVersion = match ? match[1] : 'Unknown';
+      } else if (ua.includes('iPhone') || ua.includes('iPad')) {
+        os = 'iOS';
+        const match = ua.match(/OS ([\d_]+)/);
+        if (match) {
+          osVersion = match[1].replace(/_/g, '.');
+        }
+      }
+      
+      return { name, version, os, osVersion };
+    }
+
+    // Helper: Get device type
+    function getDeviceType() {
+      const ua = navigator.userAgent;
+      if (/tablet|ipad|playbook|silk/i.test(ua)) {
+        return 'tablet';
+      }
+      if (/mobile|iphone|ipod|android|blackberry|opera|mini|windows\sce|palm|smartphone|iemobile/i.test(ua)) {
+        return 'mobile';
+      }
+      return 'desktop';
+    }
+
+    // Home Assistant tracking helper with enhanced metadata
+    async function trackEvent(eventName, metadata = {}) {
+      try {
+        // Get common metadata and merge with event-specific metadata
+        const fullMetadata = getCommonMetadata(metadata);
+        
+        await api('ha-track', {
+          event_name: eventName,
+          metadata: fullMetadata
+        });
+      } catch (error) {
+        // Silently fail - don't interrupt user experience
+        console.warn('[HA] Failed to track event:', error);
+      }
+    }
+
     // App opened
     window.addEventListener('load', () => {
       // Check for preview mode (for local testing without backend)
       const urlParams = new URLSearchParams(window.location.search);
       const previewMode = urlParams.get('preview') === 'true';
+      
+      // Track app opened with full metadata
+      trackEvent('app_opened', {});
       
       if (previewMode) {
         // Simulate authentication for preview
@@ -580,13 +778,15 @@
         return;
       }
       
-      // Track auth attempt in Statsig
-      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-        window.StatsigTracking.logEvent('auth_attempt', {
-          org: org || 'unknown',
-          timestamp: new Date().toISOString()
-        });
-      }
+      // Increment auth attempt count
+      authAttemptCount++;
+      const authStartTime = Date.now();
+      
+      // Track auth attempt
+      trackEvent('auth_attempt', {
+        org: org || 'unknown',
+        auth_attempt_count: authAttemptCount
+      });
       
       status('Authenticating...');
       
@@ -600,19 +800,34 @@
         status('Preview Mode - Authenticated (no API call)', 'success');
         mainUI.style.display = 'block';
         uploadFileContainer.style.display = 'block';
+        
+        // Track preview mode auth success
+        trackEvent('auth_success', {
+          org: org || 'unknown',
+          auth_attempt_count: authAttemptCount,
+          auth_duration_ms: Date.now() - authStartTime,
+          token_received: true,
+          first_auth_success: firstAuthSuccess,
+          preview_mode: true
+        });
+        firstAuthSuccess = false;
         return;
       }
       
       const res = await api('auth', { org });
+      const authDuration = Date.now() - authStartTime;
+      
       if (!res.success) {
-        // Track auth failure in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('auth_failed', {
-            org: org || 'unknown',
-            error: res.error || 'Auth failed',
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track auth failure
+        trackEvent('auth_failed', {
+          org: org || 'unknown',
+          error: res.error || 'Auth failed',
+          error_message: res.error || 'Auth failed',
+          auth_attempt_count: authAttemptCount,
+          auth_duration_ms: authDuration,
+          token_received: false
+        });
+        firstAuthSuccess = false;
         
         status(res.error || 'Auth failed', 'error');
         mainUI.style.display = 'none';
@@ -622,13 +837,17 @@
       token = res.token;
       status('Authenticated – ready!', 'success');
       
-      // Track auth success in Statsig
-      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-        window.StatsigTracking.logEvent('auth_success', {
-          org: org,
-          timestamp: new Date().toISOString()
-        });
-      }
+      // Track auth success
+      trackEvent('auth_success', {
+        org: org,
+        auth_attempt_count: authAttemptCount,
+        auth_duration_ms: authDuration,
+        token_received: true,
+        first_auth_success: firstAuthSuccess
+      });
+      
+      // Reset for next session (if they log out and back in)
+      firstAuthSuccess = false;
       
       mainUI.style.display = 'block';
       uploadFileContainer.style.display = 'block';
@@ -649,25 +868,48 @@
       const org = orgInput.value.trim();
       if (!org) return status('ORG required', 'error');
       
-      // Track generate attempt in Statsig
-      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-        window.StatsigTracking.logEvent('generate_addresses_attempt', {
-          org: org || 'unknown',
-          facilities_input_length: String(facilities.length),
-          timestamp: new Date().toISOString()
-        });
-      }
-
       // Validate and parse facilities - handle both semicolon and comma separators
       // First split by semicolon to get pairs, then split each pair by comma
       let facilities_list = [];
       const pairs = facilities.split(';').map(p => p.trim()).filter(p => p);
+      
+      // Parse facilities for metadata
+      const facilityPairs = [];
+      for (let i = 0; i < pairs.length; i++) {
+        const parts = pairs[i].split(',').map(p => p.trim()).filter(p => p);
+        if (parts.length === 2) {
+          facilityPairs.push([parts[0], parts[1]]);
+        }
+      }
+      
+      const generateStartTime = Date.now();
+      
+      // Track generate attempt with facility addresses specific metadata
+      trackEvent('generate_addresses_attempt', {
+        org: org || 'unknown',
+        facilities_input: facilities,
+        facilities_input_length: String(facilities.length),
+        facility_pairs_count: facilityPairs.length,
+        facility_list: facilityPairs.length > 0 ? facilityPairs : null
+      });
       
       // Validation: Check each pair
       const validationErrors = [];
       
       if (pairs.length === 0) {
         status('No facilities found. Use format: "City, State; City, State"', 'error');
+        
+        // Track generation failure
+        trackEvent('generate_addresses_failed', {
+          org: org || 'unknown',
+          facilities_input: facilities,
+          facilities_input_length: String(facilities.length),
+          facility_pairs_count: 0,
+          validation_errors_count: 1,
+          has_validation_errors: true,
+          error: 'No facilities found',
+          error_message: 'No facilities found. Use format: "City, State; City, State"'
+        });
         return;
       }
       
@@ -717,11 +959,35 @@
       // Final check: must have even number of items (pairs)
       if (facilities_list.length % 2 !== 0) {
         status('Facilities must be in pairs (City, State). Use format: "City, State; City, State"', 'error');
+        
+        // Track generation failure
+        trackEvent('generate_addresses_failed', {
+          org: org || 'unknown',
+          facilities_input: facilities,
+          facilities_input_length: String(facilities.length),
+          facility_pairs_count: facilityPairs.length,
+          validation_errors_count: 1,
+          has_validation_errors: true,
+          error: 'Invalid pair count',
+          error_message: 'Facilities must be in pairs (City, State). Use format: "City, State; City, State"'
+        });
         return;
       }
       
       if (facilities_list.length === 0) {
         status('No valid facilities found. Use format: "City, State; City, State"', 'error');
+        
+        // Track generation failure
+        trackEvent('generate_addresses_failed', {
+          org: org || 'unknown',
+          facilities_input: facilities,
+          facilities_input_length: String(facilities.length),
+          facility_pairs_count: 0,
+          validation_errors_count: 1,
+          has_validation_errors: true,
+          error: 'No valid facilities',
+          error_message: 'No valid facilities found. Use format: "City, State; City, State"'
+        });
         return;
       }
 
@@ -732,6 +998,15 @@
 
       const results = [];
       const total_pairs = facilities_list.length / 2;
+      let geocodingSuccessCount = 0;
+      let geocodingFailedCount = 0;
+      let stateCorrectionsCount = 0;
+      const geocodingErrors = [];
+      const geocodingStartTime = Date.now();
+      let geocodingApiCallsCount = 0;
+      const facilityIds = [];
+      const countriesList = [];
+      const statesList = [];
 
       try {
         // Geocode each pair individually to show progress
@@ -743,20 +1018,62 @@
           progressLabel.textContent = `Geocoding ${city}, ${state} (${pair_num}/${total_pairs})...`;
           progressBar.style.width = `${((i / 2) / total_pairs) * 100}%`;
           
+          const geoStartTime = Date.now();
           const geoRes = await api('geocode', { city, state });
+          geocodingApiCallsCount++;
+          const geoDuration = Date.now() - geoStartTime;
           
           if (!geoRes.success) {
             status(`Error geocoding ${city}, ${state}: ${geoRes.error}`, 'error');
+            geocodingFailedCount++;
+            geocodingErrors.push({ city, state, error: geoRes.error });
             generateBtn.disabled = false;
+            
+            // Track generation failure
+            const generationDuration = Date.now() - generateStartTime;
+            const geocodingDuration = Date.now() - geocodingStartTime;
+            trackEvent('generate_addresses_failed', {
+              org: org || 'unknown',
+              facilities_input: facilities,
+              facilities_input_length: String(facilities.length),
+              facility_pairs_count: total_pairs,
+              geocoding_pairs_count: total_pairs,
+              geocoding_success_count: geocodingSuccessCount,
+              geocoding_failed_count: geocodingFailedCount,
+              geocoding_errors: geocodingErrors.length > 0 ? geocodingErrors : null,
+              geocoding_api_calls_count: geocodingApiCallsCount,
+              generation_duration_ms: generationDuration,
+              geocoding_duration_ms: geocodingDuration,
+              error: geoRes.error || 'Geocoding failed',
+              error_message: `Error geocoding ${city}, ${state}: ${geoRes.error}`
+            });
             return;
           }
-
+          
+          geocodingSuccessCount++;
+          
           const geo_result = geoRes.result;
           // Use corrected state from geocoding
           const corrected_state = geo_result.state || state;
           
+          // Check if state was corrected
+          if (geo_result.state && geo_result.state !== state) {
+            stateCorrectionsCount++;
+          }
+          
+          // Track unique countries and states
+          if (geo_result.country && !countriesList.includes(geo_result.country)) {
+            countriesList.push(geo_result.country);
+          }
+          if (corrected_state && !statesList.includes(corrected_state)) {
+            statesList.push(corrected_state);
+          }
+          
+          const facilityId = `${org}-DM${pair_num}`;
+          facilityIds.push(facilityId);
+          
           const entry = {
-            "FacilityId": `${org}-DM${pair_num}`,
+            "FacilityId": facilityId,
             "FacilityAddress": {
               "Address1": geo_result.address,
               "City": city,
@@ -784,6 +1101,7 @@
         // Display JSON in editor
         const jsonData = { "Data": results };
         const jsonStr = JSON.stringify(jsonData, null, 4);
+        const jsonSizeBytes = new Blob([jsonStr]).size;
         if (jsonEditor) {
           jsonEditor.setValue(jsonStr);
         } else {
@@ -794,9 +1112,47 @@
         progressBar.style.width = '100%';
         progressLabel.textContent = `Generated ${total_pairs} facility addresses`;
         status(`Generated ${total_pairs} facility addresses!`, 'success');
+        
+        // Track generation success with facility addresses specific metadata
+        const generationDuration = Date.now() - generateStartTime;
+        const geocodingDuration = Date.now() - geocodingStartTime;
+        trackEvent('generate_addresses_completed', {
+          org: org || 'unknown',
+          facilities_input: facilities,
+          facilities_input_length: String(facilities.length),
+          facility_pairs_count: total_pairs,
+          facility_count: results.length,
+          facility_ids: facilityIds.length > 0 ? facilityIds : null,
+          countries_list: countriesList.length > 0 ? countriesList : null,
+          states_list: statesList.length > 0 ? statesList : null,
+          geocoding_pairs_count: total_pairs,
+          geocoding_success_count: geocodingSuccessCount,
+          geocoding_failed_count: geocodingFailedCount,
+          geocoding_api_calls_count: geocodingApiCallsCount,
+          state_corrections_count: stateCorrectionsCount,
+          json_size_bytes: jsonSizeBytes,
+          json_length: String(jsonStr.length),
+          generation_duration_ms: generationDuration,
+          geocoding_duration_ms: geocodingDuration
+        });
       } catch (e) {
         status(`Error: ${e.message}`, 'error');
         progressLabel.textContent = 'Generation failed';
+        
+        // Track generation failure
+        const generationDuration = Date.now() - generateStartTime;
+        trackEvent('generate_addresses_failed', {
+          org: org || 'unknown',
+          facilities_input: facilities,
+          facilities_input_length: String(facilities.length),
+          facility_pairs_count: total_pairs,
+          geocoding_success_count: geocodingSuccessCount,
+          geocoding_failed_count: geocodingFailedCount,
+          geocoding_errors: geocodingErrors.length > 0 ? geocodingErrors : null,
+          generation_duration_ms: generationDuration,
+          error: e.message || 'Unknown error',
+          error_message: e.message || 'Unknown error'
+        });
       } finally {
         generateBtn.disabled = false;
       }
@@ -810,14 +1166,30 @@
         return;
       }
 
-      // Track download attempt in Statsig
-      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-        window.StatsigTracking.logEvent('download_json_attempt', {
-          org: orgInput.value.trim() || 'unknown',
-          json_length: String(jsonStr.length),
-          timestamp: new Date().toISOString()
-        });
+      const org = orgInput.value.trim() || 'unknown';
+      const jsonSizeBytes = new Blob([jsonStr]).size;
+      
+      // Parse JSON to get facility count
+      let facilityCount = 0;
+      try {
+        const jsonData = JSON.parse(jsonStr);
+        if (Array.isArray(jsonData?.Data)) {
+          facilityCount = jsonData.Data.length;
+        } else if (Array.isArray(jsonData)) {
+          facilityCount = jsonData.length;
+        }
+      } catch (e) {
+        // Will be caught below
       }
+      
+      // Track download attempt with facility addresses specific metadata
+      trackEvent('download_json_attempt', {
+        org: org,
+        json_length: String(jsonStr.length),
+        json_size_bytes: jsonSizeBytes,
+        facility_count: facilityCount,
+        file_name: DEFAULT_FILENAME
+      });
 
       try {
         // Validate JSON
@@ -835,26 +1207,27 @@
         
         status('File downloaded!', 'success');
         
-        // Track download success in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('download_json_completed', {
-            org: orgInput.value.trim() || 'unknown',
-            json_length: String(jsonStr.length),
-            filename: DEFAULT_FILENAME,
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track download success with facility addresses specific metadata
+        trackEvent('download_json_completed', {
+          org: org,
+          json_length: String(jsonStr.length),
+          json_size_bytes: jsonSizeBytes,
+          facility_count: facilityCount,
+          file_name: DEFAULT_FILENAME,
+          json_valid: true
+        });
       } catch (e) {
         status('Invalid JSON - cannot download', 'error');
         
-        // Track download failure in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('download_json_failed', {
-            org: orgInput.value.trim() || 'unknown',
-            error: e.message || 'Unknown error',
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track download failure with facility addresses specific metadata
+        trackEvent('download_json_failed', {
+          org: org,
+          json_length: String(jsonStr.length),
+          json_size_bytes: jsonSizeBytes,
+          error: e.message || 'Unknown error',
+          error_message: e.message || 'Unknown error',
+          json_valid: false
+        });
       }
     };
 
@@ -865,22 +1238,32 @@
         return;
       }
 
-      // Track load JSON file attempt in Statsig
-      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-        window.StatsigTracking.logEvent('load_json_file_attempt', {
-          org: orgInput.value.trim() || 'unknown',
-          file_name: file.name,
-          file_size: String(file.size),
-          timestamp: new Date().toISOString()
-        });
-      }
+      const org = orgInput.value.trim() || 'unknown';
+      
+      // Track load JSON file attempt with facility addresses specific metadata
+      trackEvent('load_json_file_attempt', {
+        org: org,
+        file_name: file.name,
+        file_size_bytes: file.size
+      });
 
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const jsonStr = e.target.result;
+          const jsonSizeBytes = new Blob([jsonStr]).size;
+          
           // Validate and format JSON
           const jsonObj = JSON.parse(jsonStr);
+          
+          // Get facility count
+          let facilityCount = 0;
+          if (Array.isArray(jsonObj?.Data)) {
+            facilityCount = jsonObj.Data.length;
+          } else if (Array.isArray(jsonObj)) {
+            facilityCount = jsonObj.length;
+          }
+          
           const formattedJson = JSON.stringify(jsonObj, null, 4);
           if (jsonEditor) {
             jsonEditor.setValue(formattedJson);
@@ -890,43 +1273,44 @@
           downloadBtn.style.display = 'inline-block';
           status('File loaded into editor', 'success');
           
-          // Track load JSON file success in Statsig
-          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-            window.StatsigTracking.logEvent('load_json_file_completed', {
-              org: orgInput.value.trim() || 'unknown',
-              file_name: file.name,
-              json_length: String(jsonStr.length),
-              timestamp: new Date().toISOString()
-            });
-          }
+          // Track load JSON file success with facility addresses specific metadata
+          trackEvent('load_json_file_completed', {
+            org: org,
+            file_name: file.name,
+            file_size_bytes: file.size,
+            json_length: String(jsonStr.length),
+            json_size_bytes: jsonSizeBytes,
+            facility_count: facilityCount,
+            json_valid: true
+          });
         } catch (e) {
           status('Invalid JSON file: ' + e.message, 'error');
           uploadFileInput.value = ''; // Clear the invalid file selection
           
-          // Track load JSON file failure in Statsig
-          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-            window.StatsigTracking.logEvent('load_json_file_failed', {
-              org: orgInput.value.trim() || 'unknown',
-              file_name: file.name,
-              error: e.message || 'Unknown error',
-              timestamp: new Date().toISOString()
-            });
-          }
+          // Track load JSON file failure with facility addresses specific metadata
+          trackEvent('load_json_file_failed', {
+            org: org,
+            file_name: file.name,
+            file_size_bytes: file.size,
+            error: e.message || 'Unknown error',
+            error_message: e.message || 'Unknown error',
+            json_valid: false
+          });
         }
       };
       reader.onerror = () => {
         status('Error reading file', 'error');
         uploadFileInput.value = '';
         
-        // Track load JSON file failure in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('load_json_file_failed', {
-            org: orgInput.value.trim() || 'unknown',
-            file_name: file.name,
-            error: 'Error reading file',
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track load JSON file failure with facility addresses specific metadata
+        trackEvent('load_json_file_failed', {
+          org: org,
+          file_name: file.name,
+          file_size_bytes: file.size,
+          error: 'Error reading file',
+          error_message: 'Error reading file',
+          json_valid: false
+        });
       };
       reader.readAsText(file);
     });
@@ -953,15 +1337,38 @@
       const org = orgInput.value.trim();
       if (!org) return status('ORG required', 'error');
 
-      // Track upload attempt in Statsig
-      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-        window.StatsigTracking.logEvent('upload_addresses_attempt', {
-          org: org || 'unknown',
-          json_length: String(jsonStr.length),
-          reset_eligibility_checked: String(resetEligibilityCheckbox?.checked || false),
-          timestamp: new Date().toISOString()
-        });
+      // Parse JSON to get facility count and location IDs
+      let facilityCount = 0;
+      let locationIds = [];
+      try {
+        if (Array.isArray(jsonData?.Data)) {
+          facilityCount = jsonData.Data.length;
+          locationIds = jsonData.Data
+            .map(item => item && item.FacilityId)
+            .filter(id => typeof id === 'string' && id.trim().length > 0);
+        } else if (Array.isArray(jsonData)) {
+          facilityCount = jsonData.length;
+          locationIds = jsonData
+            .map(item => item && item.FacilityId)
+            .filter(id => typeof id === 'string' && id.trim().length > 0);
+        }
+      } catch (e) {
+        // If anything goes wrong, fall back to defaults
       }
+      
+      const jsonSizeBytes = new Blob([jsonStr]).size;
+      const resetEligibilityChecked = resetEligibilityCheckbox?.checked || false;
+      const uploadStartTime = Date.now();
+      
+      // Track upload attempt with facility addresses specific metadata
+      trackEvent('upload_addresses_attempt', {
+        org: org || 'unknown',
+        json_length: String(jsonStr.length),
+        json_size_bytes: jsonSizeBytes,
+        facility_count: facilityCount,
+        location_ids_count: locationIds.length,
+        reset_eligibility_checked: resetEligibilityChecked
+      });
 
       status('Uploading...', 'info');
       uploadBtn.disabled = true;
@@ -969,7 +1376,10 @@
       progressLabel.textContent = 'Uploading...';
 
       try {
+        const apiStartTime = Date.now();
         const res = await api('upload', { org, token, json_data: jsonData });
+        const uploadApiResponseTime = Date.now() - apiStartTime;
+        const uploadDuration = Date.now() - uploadStartTime;
         
         progressBar.style.width = '100%';
         
@@ -977,14 +1387,19 @@
           status(res.error || 'Upload failed', 'error');
           progressLabel.textContent = 'Upload Failed';
           
-          // Track upload failure in Statsig
-          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-            window.StatsigTracking.logEvent('upload_addresses_failed', {
-              org: org || 'unknown',
-              error: res.error || 'Upload failed',
-              timestamp: new Date().toISOString()
-            });
-          }
+          // Track upload failure with facility addresses specific metadata
+          trackEvent('upload_addresses_failed', {
+            org: org || 'unknown',
+            json_length: String(jsonStr.length),
+            json_size_bytes: jsonSizeBytes,
+            facility_count: facilityCount,
+            reset_eligibility_checked: resetEligibilityChecked,
+            upload_duration_ms: uploadDuration,
+            upload_api_response_time_ms: uploadApiResponseTime,
+            upload_success: false,
+            error: res.error || 'Upload failed',
+            error_message: res.error || 'Upload failed'
+          });
           
           return;
         }
@@ -1042,16 +1457,24 @@
         progressLabel.textContent = finalProgressLabel;
         status(finalStatusMessage, 'success');
         
-        // Track upload success in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('upload_addresses_completed', {
-            org: org || 'unknown',
-            total: String(res.total),
-            success_count: String(res.success),
-            failed_count: String(res.failed),
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track upload success with facility addresses specific metadata
+        trackEvent('upload_addresses_completed', {
+          org: org || 'unknown',
+          json_length: String(jsonStr.length),
+          json_size_bytes: jsonSizeBytes,
+          facility_count: facilityCount,
+          location_ids_count: locationIds.length,
+          reset_eligibility_checked: resetEligibilityChecked,
+          reset_eligibility_attempted: resetEligibilityAttempted,
+          reset_eligibility_success: resetEligibilityAttempted ? resetEligibilitySuccess : null,
+          upload_duration_ms: uploadDuration,
+          upload_api_response_time_ms: uploadApiResponseTime,
+          upload_success: true,
+          upload_total: res.total || facilityCount,
+          upload_success_count: res.success || facilityCount,
+          upload_failed_count: res.failed || 0,
+          upload_summary: res.summary || null
+        });
         
         // Show summary in alert
         alert(alertMessage);
@@ -1059,14 +1482,18 @@
         status(`Error: ${e.message}`, 'error');
         progressLabel.textContent = 'Upload Failed';
         
-        // Track upload failure in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('upload_addresses_failed', {
-            org: org || 'unknown',
-            error: e.message || 'Unknown error',
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track upload failure with facility addresses specific metadata
+        trackEvent('upload_addresses_failed', {
+          org: org || 'unknown',
+          json_length: String(jsonStr.length),
+          json_size_bytes: jsonSizeBytes,
+          facility_count: facilityCount,
+          reset_eligibility_checked: resetEligibilityChecked,
+          upload_duration_ms: Date.now() - uploadStartTime,
+          upload_success: false,
+          error: e.message || 'Unknown error',
+          error_message: e.message || 'Unknown error'
+        });
       } finally {
         uploadBtn.disabled = false;
       }
@@ -1180,8 +1607,6 @@
       }, 100);
     }
   </script>
-  <!-- Statsig Analytics -->
-  <script src="statsig.js"></script>
   <!-- Vercel Analytics -->
   <script>
     (function() {
