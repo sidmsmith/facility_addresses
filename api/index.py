@@ -27,6 +27,13 @@ if not PASSWORD or not CLIENT_SECRET:
     raise Exception("Missing MANHATTAN_PASSWORD or MANHATTAN_SECRET environment variables")
 
 # === HELPERS ===
+def send_ha_message(payload):
+    """Send event to Home Assistant webhook"""
+    try:
+        requests.post(HA_WEBHOOK_URL, json=payload, headers=HA_HEADERS, timeout=5)
+    except:
+        pass
+
 def get_manhattan_token(org):
     url = f"https://{AUTH_HOST}/oauth/token"
     username = f"{USERNAME_BASE}{org.lower()}"
