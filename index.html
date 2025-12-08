@@ -1417,26 +1417,16 @@
         let finalStatusMessage = 'Upload complete!';
         let finalProgressLabel = `Upload Complete: ${res.summary}`;
         let alertMessage = res.summary;
+        
+        // Initialize reset eligibility tracking variables
+        let resetEligibilityAttempted = false;
+        let resetEligibilitySuccess = false;
 
         // If requested, perform the additional reset user eligibility call
         if (resetEligibilityCheckbox && resetEligibilityCheckbox.checked) {
-          // Derive LocationIds from the JSON payload currently displayed
-          let locationIds = [];
-          try {
-            if (Array.isArray(jsonData?.Data)) {
-              locationIds = jsonData.Data
-                .map(item => item && item.FacilityId)
-                .filter(id => typeof id === 'string' && id.trim().length > 0);
-            } else if (Array.isArray(jsonData)) {
-              locationIds = jsonData
-                .map(item => item && item.FacilityId)
-                .filter(id => typeof id === 'string' && id.trim().length > 0);
-            }
-          } catch (e) {
-            // If anything goes wrong, fall back to no locations
-            locationIds = [];
-          }
-
+          resetEligibilityAttempted = true;
+          
+          // Use the locationIds already extracted from JSON (defined earlier in the function)
           if (locationIds.length > 0) {
             const resetRes = await api('reset_user_eligibility', {
               org,
@@ -1445,10 +1435,12 @@
             });
 
             if (!resetRes.success) {
+              resetEligibilitySuccess = false;
               finalStatusMessage = 'Upload complete, but user eligibility reset failed';
               finalProgressLabel += ' | User eligibility reset failed';
               alertMessage += `\n\nUser eligibility reset failed: ${resetRes.error || 'Unknown error'}`;
             } else {
+              resetEligibilitySuccess = true;
               finalStatusMessage = 'Upload complete and user eligibility reset!';
               finalProgressLabel += ' | User eligibility reset';
               if (resetRes.summary) {
@@ -1458,6 +1450,7 @@
               }
             }
           } else {
+            resetEligibilitySuccess = false;
             finalStatusMessage = 'Upload complete, but no FacilityIds found for user eligibility reset';
             finalProgressLabel += ' | No FacilityIds for reset';
             alertMessage += `\n\nNo FacilityIds found in JSON for user eligibility reset.`;
