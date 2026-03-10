@@ -432,12 +432,13 @@
     // URL Parameters for cross-app integration
     const urlParams = new URLSearchParams(window.location.search);
     const locationParam = urlParams.get('Location');
+    const orgParam = urlParams.get('ORG');
     const organizationParam = urlParams.get('Organization');
     const businessUnitParam = urlParams.get('BusinessUnit');
     
     // Store URL parameters for use
     const urlLocation = locationParam || null;
-    const urlOrg = organizationParam || null;
+    const urlOrg = orgParam || organizationParam || null;
     const urlBusinessUnit = businessUnitParam || null;
     
     // Ensure ORG is blank on load (security) unless from URL
@@ -633,7 +634,7 @@
         time_on_page: timeOnPage,
         referrer: document.referrer || null,
         url_params: Object.keys(urlParamsObj).length > 0 ? urlParamsObj : null,
-        auto_authenticated: false, // This app doesn't use URL params for auto-auth
+        auto_authenticated: !!urlOrg,
         preview_mode: previewMode,
         
         // Category 3: App State & Preferences
@@ -754,7 +755,7 @@
     }
 
     // App opened
-    window.addEventListener('load', () => {
+    window.addEventListener('load', async () => {
       // Check for preview mode (for local testing without backend)
       const urlParams = new URLSearchParams(window.location.search);
       const previewMode = urlParams.get('preview') === 'true';
@@ -773,9 +774,15 @@
         api('app_opened', {}).catch(() => {
           // Silently fail if API not available
         });
+
+        if (urlOrg) {
+          await authenticate();
+        }
       }
       
-      orgInput.focus();
+      if (!urlOrg) {
+        orgInput.focus();
+      }
       initJsonEditor();
     });
 
@@ -841,6 +848,10 @@
         
         status(res.error || 'Auth failed', 'error');
         mainUI.style.display = 'none';
+        const authSection = document.getElementById('authSection');
+        if (authSection) {
+          authSection.style.display = 'block';
+        }
         return;
       }
       
