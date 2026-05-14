@@ -1,6 +1,6 @@
 # Site Identification Developer - Web Application
 
-**Version 2.1.0** - Reset User Facility Eligibility Feature
+**Version 2.3.0** — Usage via dashboard ingest (Neon)
 
 Web version of the Site Identification Developer (SID) tool, deployed on Vercel. This is a complete migration from the Python desktop application (`facilityaddress.py`) with enhanced features and improved user experience. This tool generates facility address data from city/state pairs and uploads it to Manhattan WMS.
 
@@ -13,6 +13,7 @@ Add the following environment variables in your Vercel project settings:
 #### Required:
 - `MANHATTAN_PASSWORD` - Manhattan API password
 - `MANHATTAN_SECRET` - Manhattan API client secret
+- `MANHATTAN_USAGE_INGEST_URL` - Full URL of the Manhattan App Usage Dashboard ingest endpoint (e.g. `https://<your-dashboard>.vercel.app/api/usage-ingest`). Usage events are stored in Neon; optional `MANHATTAN_USAGE_INGEST_SECRET` if your dashboard ingest requires it.
 
 ### 2. Local Development
 
@@ -26,6 +27,7 @@ Add the following environment variables in your Vercel project settings:
    ```bash
    export MANHATTAN_PASSWORD="your_password"
    export MANHATTAN_SECRET="your_secret"
+   export MANHATTAN_USAGE_INGEST_URL="https://your-dashboard.vercel.app/api/usage-ingest"
    ```
 
 3. Run the development server:

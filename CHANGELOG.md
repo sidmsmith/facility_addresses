@@ -2,6 +2,14 @@
 
 All notable changes to the Site Identification Developer web application will be documented in this file.
 
+## [2.3.0] - 2026-05-14
+
+### Changed
+- **Usage tracking**: Events are sent to the centralized Manhattan App Usage Dashboard ingest (`MANHATTAN_USAGE_INGEST_URL`) instead of a Home Assistant webhook. Endpoint renamed from `/api/ha-track` to `/api/usage-track`.
+- Optional `MANHATTAN_USAGE_INGEST_SECRET` when the dashboard ingest is protected.
+
+---
+
 ## [2.1.0] - 2025-01-XX
 
 ### Added
