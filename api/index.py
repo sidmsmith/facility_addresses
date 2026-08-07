@@ -180,10 +180,10 @@ def usage_track():
         
         # Build complete payload with app info and timestamp
         payload = {
+            **metadata,
             "event_name": event_name,
             "app_name": "facility-addresses",
             "app_version": "2.3.0",
-            **metadata,
             "timestamp": datetime.now().isoformat()
         }
         
